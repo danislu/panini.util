@@ -1,16 +1,15 @@
 var fs = require('fs');
 const all = require('./all');
 const dups = require('./dups');
+const missing = require('./missing');
 const Scraper = require('images-scraper');
 const sequential = require('promise-sequential');
 
 
 const google = new Scraper.Google();
-let count = 1;
-const total = dups.length;
-const gisFirst = (word) => () => google
+const gisFirst = (word, idx, total) => () => google
   .list({
-    keyword: word,
+    keyword: `${word} panini fifa 2018`,
     num: 1,
     detail: false,
     nightmare: {
@@ -22,25 +21,34 @@ const gisFirst = (word) => () => google
     url: res[0].url,
   }))
   .then(r => {
-    console.log(`fetched ${count++}/${total} ...`);
+    console.log(`fetched ${idx+1}/${total} ...`);
     return r;
   });
 
-const main = () => {
-  const searches = dups
-    .map((id) => `${id} - ${all[id]} panini fifa 2018`)
-    .map(word => gisFirst(word));
+const getPromiseArray = ids => ids
+  .map((id) => `${id} - ${all[id]}`)
+  .map((word, idx) => gisFirst(word, idx, ids.length));
 
-  return sequential(searches)
-    .then(r => {
-      fs.writeFile("./players.json", JSON.stringify(r), function(err) {
+const main = () => {
+  const dupPromises = getPromiseArray(dups);
+  const missingPromises = getPromiseArray(missing);
+
+  return sequential(dupPromises)
+    .then(duplicates => sequential(missingPromises)
+      .then(missing => ({
+        duplicates,
+        missing, 
+      }))
+    )
+    .then(players => {
+      fs.writeFile("./players.json", JSON.stringify(players), function(err) {
         if(err) {
             return console.log(err);
         }
       
         console.log("The file was saved!");
       });
-  });
+    });
 };
 
 console.log('running');
