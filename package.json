@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "images-scraper": "^2.0.11",
+    "lodash": "^4.17.10",
     "promise-sequential": "^1.1.1"
   }
 }
